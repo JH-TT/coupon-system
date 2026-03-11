@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: coupon-system
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/coupon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    username: coupon
+    password: coupon
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 3000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: true
+    open-in-view: false
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

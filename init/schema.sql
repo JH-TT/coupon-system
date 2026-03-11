@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS coupon (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    total_quantity INT NOT NULL,
+    issued_count INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS coupon_issue (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    coupon_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_coupon_issue_coupon FOREIGN KEY (coupon_id) REFERENCES coupon(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Phase 1 테스트용 샘플 데이터
+INSERT INTO coupon (name, total_quantity, issued_count) VALUES ('선착순 100명 할인 쿠폰', 100, 0);
