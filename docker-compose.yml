@@ -13,6 +13,10 @@ services:
       - mysql-data:/var/lib/mysql
       - ./init/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-
+  redis:
+    image: redis:7
+    container_name: coupon-redis
+    ports:
+      - "6380:6379"
 volumes:
   mysql-data:

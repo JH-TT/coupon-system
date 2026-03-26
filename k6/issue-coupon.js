@@ -5,16 +5,57 @@ import { Counter } from 'k6/metrics';
 const successCount = new Counter('success_count');
 const failCount = new Counter('fail_count');
 
+// export const options = {
+//   scenarios: {
+//     spike: {
+//       executor: 'shared-iterations',
+//       vus: 2000,           // 동시 사용자 200명
+//       iterations: 2000,    // 총 1000번 요청
+//       maxDuration: '30s',
+//     },
+//   },
+// };
+
 export const options = {
   scenarios: {
-    spike: {
-      executor: 'shared-iterations',
-      vus: 1000,           // 동시 사용자 1000명
-      iterations: 1000,    // 총 1000번 요청
-      maxDuration: '30s',
+    coupon_issue_rate: {
+      executor: 'constant-arrival-rate',
+      rate: 5000,              // 초당 2000 요청
+      timeUnit: '1s',
+      duration: '20s',        // 20초 동안 실행 => 약 2000건
+      preAllocatedVUs: 3000,   // 미리 확보할 VU
+      maxVUs: 10000,           // 부족하면 최대 2000까지 확장
     },
   },
+  thresholds: {
+    http_req_failed: ['rate<0.1'],   // 실패율 10% 미만 목표
+    http_req_duration: ['p(95)<5000'],
+  },
 };
+
+// export const options = {
+//   scenarios: {
+//     coupon_burst: {
+//       executor: 'ramping-arrival-rate',
+//       timeUnit: '1s',
+//       preAllocatedVUs: 300,
+//       maxVUs: 2000,
+//       stages: [
+//         { target: 50, duration: '5s' },   // 워밍업
+//         { target: 200, duration: '5s' },  // 급상승
+//         { target: 500, duration: '3s' },  // 오픈 순간 폭주
+//         { target: 500, duration: '5s' },  // 폭주 유지
+//         { target: 200, duration: '5s' },  // 감소
+//         { target: 50, duration: '5s' },   // 정리
+//         { target: 0, duration: '2s' },    // 종료
+//       ],
+//     },
+//   },
+//   thresholds: {
+//     http_req_failed: ['rate<0.1'],
+//     http_req_duration: ['p(95)<5000'],
+//   },
+// };
 
 export default function () {
   const userId = __VU; // 각 VU를 고유 유저로 사용

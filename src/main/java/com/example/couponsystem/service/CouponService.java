@@ -24,20 +24,13 @@ public class CouponService {
         Long couponId = in.getCouponId();
         Long userId = in.getUserId();
 
-        Coupon coupon = couponRepository.findById(couponId).orElseThrow(
+        // 쿠폰 존재여부 확인
+        couponRepository.findById(couponId).orElseThrow(
                 () -> new IllegalArgumentException("Coupon coupon with id " + couponId + " not found!")
         );
 
-        // 이미 발급받은 유저는 또 받을 수 없다.
-        Optional<CouponIssue> issue = couponIssueRepository.findByCouponIdAndUserId(couponId, userId);
-        if (issue.isPresent()) {
-            throw new IllegalArgumentException("Coupon issue with id " + couponId + " already exists!");
-        }
-
         CouponIssue newIssue = CouponIssue.create(couponId, userId);
 
-        // 쿠폰 발급.
-        coupon.issue();
         // 쿠폰 발급정보 저장.
         couponIssueRepository.save(newIssue);
     }
