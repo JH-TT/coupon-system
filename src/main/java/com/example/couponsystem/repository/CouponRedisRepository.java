@@ -1,5 +1,6 @@
 package com.example.couponsystem.repository;
 
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -20,8 +21,12 @@ public class CouponRedisRepository {
 
     public void decrement(Long couponId) {
         String key = "coupon:" + couponId + ":count";
-        Long value = redisTemplate.opsForValue().decrement(key);
+        redisTemplate.opsForValue().decrement(key);
+    }
 
-        System.out.println("key = " + key + ", value = " + value);
+    public boolean markCompensationRequested(Long couponId, Long userId) {
+        String key = "coupon:" + couponId + ":compensated:user:" + userId;
+        Boolean marked = redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofHours(24));
+        return Boolean.TRUE.equals(marked);
     }
 }

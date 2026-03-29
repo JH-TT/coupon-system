@@ -11,7 +11,7 @@ const failCount = new Counter('fail_count');
 //       executor: 'shared-iterations',
 //       vus: 2000,           // 동시 사용자 200명
 //       iterations: 2000,    // 총 1000번 요청
-//       maxDuration: '30s',
+//       maxDuration: '10s',
 //     },
 //   },
 // };
@@ -22,9 +22,9 @@ export const options = {
       executor: 'constant-arrival-rate',
       rate: 5000,              // 초당 2000 요청
       timeUnit: '1s',
-      duration: '20s',        // 20초 동안 실행 => 약 2000건
-      preAllocatedVUs: 3000,   // 미리 확보할 VU
-      maxVUs: 10000,           // 부족하면 최대 2000까지 확장
+      duration: '10s',        // 20초 동안 실행 => 약 50000건
+      preAllocatedVUs: 2000,   // 미리 확보할 VU
+      maxVUs: 5000,           // 부족하면 최대 2000까지 확장
     },
   },
   thresholds: {

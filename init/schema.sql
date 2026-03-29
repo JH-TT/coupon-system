@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS coupon_issue (
     coupon_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     issued_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_coupon_issue_coupon FOREIGN KEY (coupon_id) REFERENCES coupon(id)
+    CONSTRAINT fk_coupon_issue_coupon FOREIGN KEY (coupon_id) REFERENCES coupon(id),
+    CONSTRAINT uk_coupon_user UNIQUE (coupon_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Phase 1 테스트용 샘플 데이터

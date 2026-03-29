@@ -4,12 +4,14 @@ import com.example.couponsystem.dto.CouponRequest;
 import com.example.couponsystem.facade.CouponFacade;
 import com.example.couponsystem.service.CouponService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/coupons")
@@ -21,7 +23,11 @@ public class CouponController {
     @PostMapping(path = "/issue")
     public ResponseEntity<Object> issueCoupon(@RequestBody CouponRequest request) throws Exception {
 
-        couponFacade.issueCouponWithRedis(request);
+        boolean issued = couponFacade.issueCouponWithKafka(request);
+
+        if (!issued) {
+            return ResponseEntity.status(409).build();
+        }
 
         return ResponseEntity.ok().build();
     }

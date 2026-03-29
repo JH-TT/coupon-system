@@ -1,9 +1,11 @@
 package com.example.couponsystem.facade;
 
 import com.example.couponsystem.dto.CouponRequest;
+import com.example.couponsystem.kafka.producer.CouponIssueProducer;
 import com.example.couponsystem.repository.CouponRedisRepository;
 import com.example.couponsystem.repository.LockRepository;
 import com.example.couponsystem.repository.LockRepository2;
+import com.example.couponsystem.service.AsyncCouponService;
 import com.example.couponsystem.service.CouponService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -25,6 +27,8 @@ public class CouponFacade {
     private final CouponService couponService;
     private final CouponRedisRepository couponRedisRepository;
     private final RedissonClient redissonClient;
+    private final CouponIssueProducer producer;
+    private final AsyncCouponService asyncCouponService;
 
     public void issueCouponWithRetry(CouponRequest in) {
         int maxRetry = 10;
@@ -126,5 +130,37 @@ public class CouponFacade {
 
         // 락 해제 후 DB 저장 - 락 유지 시간 최소화
         couponService.issueCoupon(in);
+    }
+
+    public boolean issueCouponWithKafka(CouponRequest in) throws Exception {
+        Long count = couponRedisRepository.increment(in.getCouponId());
+
+        // 제한을 확 줄여서 딱 1000개만 발급되는지 확인해 보자.
+        if (count > 1000) {
+            couponRedisRepository.decrement(in.getCouponId());
+            return false;
+        }
+
+        try {
+            producer.send(in.getCouponId(), in.getUserId());
+        } catch (Exception e) {
+            couponRedisRepository.decrement(in.getCouponId());
+            throw e;
+        }
+
+        return true;
+    }
+
+    // 비동기
+    public boolean issueCouponWithAsync(CouponRequest in) {
+        Long count = couponRedisRepository.increment(in.getCouponId());
+
+        if (count > 1000) {
+            couponRedisRepository.decrement(in.getCouponId());
+            return false;
+        }
+
+        asyncCouponService.issueCouponAsync(in);
+        return true;
     }
 }
