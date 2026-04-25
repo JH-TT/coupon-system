@@ -32,6 +32,7 @@ public class CouponIssueConsumer {
             couponService.issueCoupon(request);
         } catch (DataIntegrityViolationException e) {
             if (isDuplicateIssue(e)) {
+                couponRedisRepository.decrement(issueMessage.getCouponId());
                 log.info("중복 발급 이벤트 무시. couponId={}, userId={}", issueMessage.getCouponId(), issueMessage.getUserId());
                 return;
             }

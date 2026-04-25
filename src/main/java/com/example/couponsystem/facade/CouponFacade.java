@@ -132,18 +132,12 @@ public class CouponFacade {
         couponService.issueCoupon(in);
     }
 
-    public boolean issueCouponWithKafka(CouponRequest in) throws Exception {
-        Long count = couponRedisRepository.increment(in.getCouponId());
-
-        // 제한을 확 줄여서 딱 1000개만 발급되는지 확인해 보자.
-        if (count > 1000) {
-            couponRedisRepository.decrement(in.getCouponId());
-            return false;
-        }
+    public boolean issueCouponWithKafka(CouponRequest in) {
+        couponRedisRepository.increment(in.getCouponId());
 
         try {
             producer.send(in.getCouponId(), in.getUserId());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             couponRedisRepository.decrement(in.getCouponId());
             throw e;
         }

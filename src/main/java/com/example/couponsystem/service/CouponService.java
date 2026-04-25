@@ -7,9 +7,11 @@ import com.example.couponsystem.repository.CouponIssueRepository;
 import com.example.couponsystem.repository.CouponRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -20,7 +22,6 @@ public class CouponService {
 
     @Transactional
     public void issueCoupon(CouponRequest in) {
-
         Long couponId = in.getCouponId();
         Long userId = in.getUserId();
 

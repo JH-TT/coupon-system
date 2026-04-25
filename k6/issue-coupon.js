@@ -1,9 +1,34 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter } from 'k6/metrics';
+import exec from 'k6/execution';
+
+function envInt(name, fallback) {
+  const raw = __ENV[name];
+  if (!raw) return fallback;
+  const parsed = parseInt(raw, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function resolveTargetUrl() {
+  const fallback = 'http://localhost:8081/api/v1/coupons/issue';
+  const raw = (__ENV.TARGET_URL || '').trim().replace(/^['"]|['"]$/g, '');
+
+  if (!raw) return fallback;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+
+  if (raw.startsWith('/')) {
+    return `http://localhost:8081${raw}`;
+  }
+
+  return `http://${raw}`;
+}
+
+const targetUrl = resolveTargetUrl();
 
 const successCount = new Counter('success_count');
 const failCount = new Counter('fail_count');
+const requestsByInstance = new Counter('requests_by_instance');
 
 // export const options = {
 //   scenarios: {
@@ -20,11 +45,11 @@ export const options = {
   scenarios: {
     coupon_issue_rate: {
       executor: 'constant-arrival-rate',
-      rate: 5000,              // 초당 2000 요청
+      rate: envInt('RATE', 5000),
       timeUnit: '1s',
-      duration: '10s',        // 20초 동안 실행 => 약 50000건
-      preAllocatedVUs: 2000,   // 미리 확보할 VU
-      maxVUs: 5000,           // 부족하면 최대 2000까지 확장
+      duration: __ENV.DURATION || '10s',
+      preAllocatedVUs: envInt('PRE_ALLOCATED_VUS', 2000),
+      maxVUs: envInt('MAX_VUS', 5000),
     },
   },
   thresholds: {
@@ -58,7 +83,7 @@ export const options = {
 // };
 
 export default function () {
-  const userId = __VU; // 각 VU를 고유 유저로 사용
+  const userId = exec.scenario.iterationInTest + 1;
 
   const payload = JSON.stringify({
     userId: userId,
@@ -71,7 +96,11 @@ export default function () {
     },
   };
 
-  const res = http.post('http://localhost:8080/api/v1/coupons/issue', payload, params);
+  const res = http.post(targetUrl, payload, params);
+
+  const rawInstanceHeader = res.headers['X-App-Instance'] || res.headers['x-app-instance'];
+  const instance = Array.isArray(rawInstanceHeader) ? rawInstanceHeader[0] : (rawInstanceHeader || 'unknown');
+  requestsByInstance.add(1, { instance: String(instance), status: String(res.status) });
 
   check(res, {
     'status is 200': (r) => r.status === 200,
@@ -86,21 +115,26 @@ export default function () {
 }
 
 export function handleSummary(data) {
-  const totalRequests = data.metrics.http_reqs.values.count;
-  const avgDuration = data.metrics.http_req_duration.values.avg.toFixed(2);
-  const p95Duration = data.metrics.http_req_duration.values['p(95)'].toFixed(2);
-  const p99Duration = data.metrics.http_req_duration.values['p(99)'].toFixed(2);
-  const successRate = data.metrics.checks.values.rate * 100;
+  const metrics = data.metrics || {};
+  const reqValues = (metrics.http_reqs && metrics.http_reqs.values) || {};
+  const durValues = (metrics.http_req_duration && metrics.http_req_duration.values) || {};
+  const checkValues = (metrics.checks && metrics.checks.values) || {};
+
+  const toFixedOrNa = (value) => (typeof value === 'number' ? value.toFixed(2) : 'N/A');
+
+  const totalRequests = typeof reqValues.count === 'number' ? reqValues.count : 0;
+  const avgDuration = toFixedOrNa(durValues.avg);
+  const p95Duration = toFixedOrNa(durValues['p(95)']);
+  const p99Duration = toFixedOrNa(durValues['p(99)']);
+  const successRate = typeof checkValues.rate === 'number' ? (checkValues.rate * 100) : null;
 
   console.log('\n========== 부하 테스트 결과 ==========');
   console.log(`총 요청 수: ${totalRequests}`);
   console.log(`평균 응답시간: ${avgDuration}ms`);
   console.log(`p95 응답시간: ${p95Duration}ms`);
   console.log(`p99 응답시간: ${p99Duration}ms`);
-  console.log(`성공률: ${successRate.toFixed(2)}%`);
+  console.log(`성공률: ${successRate === null ? 'N/A' : `${successRate.toFixed(2)}%`}`);
   console.log('=====================================\n');
 
-  return {
-    stdout: JSON.stringify(data, null, 2),
-  };
+  return {};
 }

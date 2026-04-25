@@ -1,24 +1,18 @@
 spring:
+  profiles:
+    default: local
+
   application:
     name: coupon-system
 
   datasource:
-    url: jdbc:mysql://localhost:3306/coupon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
-    username: coupon
-    password: coupon
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 250
       minimum-idle: 5
       connection-timeout: 20000
 
-  data:
-    redis:
-      host: localhost
-      port: 6380
-
   kafka:
-    bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -45,5 +39,5 @@ logging:
   level:
     root: INFO
     org.hibernate.SQL: ERROR
-    com.example.couponsystem.facade.CouponFacade: ERROR
+    com.example.couponsystem.facade.CouponFacade: INFO
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE

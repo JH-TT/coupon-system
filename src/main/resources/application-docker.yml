@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3307/coupon?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    username: coupon
+    password: coupon
+
+  data:
+    redis:
+      host: localhost
+      port: 6380
+
+  kafka:
+    bootstrap-servers: localhost:9092

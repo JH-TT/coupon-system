@@ -21,7 +21,7 @@ public class CouponController {
     private final CouponFacade couponFacade;
 
     @PostMapping(path = "/issue")
-    public ResponseEntity<Object> issueCoupon(@RequestBody CouponRequest request) throws Exception {
+    public ResponseEntity<Object> issueCoupon(@RequestBody CouponRequest request) {
 
         boolean issued = couponFacade.issueCouponWithKafka(request);
 
@@ -32,4 +32,3 @@ public class CouponController {
         return ResponseEntity.ok().build();
     }
 }
-
