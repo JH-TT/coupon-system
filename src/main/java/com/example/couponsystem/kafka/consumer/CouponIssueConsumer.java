@@ -1,13 +1,16 @@
 package com.example.couponsystem.kafka.consumer;
 
-import com.example.couponsystem.dto.CouponRequest;
 import com.example.couponsystem.kafka.message.CouponIssueMessage;
 import com.example.couponsystem.repository.CouponRedisRepository;
 import com.example.couponsystem.service.CouponService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -21,25 +24,53 @@ public class CouponIssueConsumer {
     private final ObjectMapper mapper;
 
     @KafkaListener(topics = "coupon-issue", groupId = "coupon-issue-group")
-    public void consume(String message) {
-        CouponIssueMessage issueMessage = parseMessage(message);
+    public void consume(List<String> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return;
+        }
 
-        CouponRequest request = new CouponRequest();
-        request.setCouponId(issueMessage.getCouponId());
-        request.setUserId(issueMessage.getUserId());
+        List<CouponIssueMessage> issueMessages = new ArrayList<>(messages.size());
+        for (String message : messages) {
+            try {
+                issueMessages.add(parseMessage(message));
+            } catch (Exception e) {
+                log.error("Kafka 메시지 파싱 실패. message={}", message, e);
+            }
+        }
+
+        if (issueMessages.isEmpty()) {
+            return;
+        }
 
         try {
-            couponService.issueCoupon(request);
-        } catch (DataIntegrityViolationException e) {
-            if (isDuplicateIssue(e)) {
-                couponRedisRepository.decrement(issueMessage.getCouponId());
-                log.info("중복 발급 이벤트 무시. couponId={}, userId={}", issueMessage.getCouponId(), issueMessage.getUserId());
-                return;
+            int[] batchResult = couponService.issueCouponsBatch(issueMessages);
+            Map<Long, Long> duplicateCountsByCoupon = new HashMap<>();
+
+            for (int i = 0; i < batchResult.length; i++) {
+                int result = batchResult[i];
+
+                if (result > 0 || result == Statement.SUCCESS_NO_INFO) {
+                    continue;
+                }
+
+                if (result == Statement.EXECUTE_FAILED) {
+                    CouponIssueMessage failedMessage = issueMessages.get(i);
+                    compensate(failedMessage, new IllegalStateException("Batch execute failed for coupon issue message"));
+                    continue;
+                }
+
+                CouponIssueMessage issueMessage = issueMessages.get(i);
+                duplicateCountsByCoupon.merge(issueMessage.getCouponId(), 1L, Long::sum);
             }
 
-            compensate(issueMessage, e);
+            for (Map.Entry<Long, Long> entry : duplicateCountsByCoupon.entrySet()) {
+                couponRedisRepository.decrementBy(entry.getKey(), entry.getValue());
+                log.debug("중복 발급 이벤트 보정. couponId={}, duplicateCount={}", entry.getKey(), entry.getValue());
+            }
         } catch (Exception e) {
-            compensate(issueMessage, e);
+            for (CouponIssueMessage issueMessage : issueMessages) {
+                compensate(issueMessage, e);
+            }
         }
     }
 
@@ -72,19 +103,4 @@ public class CouponIssueConsumer {
         log.error("소비 실패 보상 생략(이미 처리됨). couponId={}, userId={}", issueMessage.getCouponId(), issueMessage.getUserId(), e);
     }
 
-    private boolean isDuplicateIssue(DataIntegrityViolationException e) {
-        Throwable current = e;
-
-        while (current != null) {
-            String message = current.getMessage();
-
-            if (message != null && message.contains("uk_coupon_user")) {
-                return true;
-            }
-
-            current = current.getCause();
-        }
-
-        return false;
-    }
 }

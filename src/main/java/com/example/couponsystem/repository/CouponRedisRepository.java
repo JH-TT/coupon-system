@@ -20,8 +20,16 @@ public class CouponRedisRepository {
     }
 
     public void decrement(Long couponId) {
+        decrementBy(couponId, 1L);
+    }
+
+    public void decrementBy(Long couponId, long amount) {
+        if (amount <= 0) {
+            return;
+        }
+
         String key = "coupon:" + couponId + ":count";
-        redisTemplate.opsForValue().decrement(key);
+        redisTemplate.opsForValue().decrement(key, amount);
     }
 
     public boolean markCompensationRequested(Long couponId, Long userId) {

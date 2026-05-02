@@ -21,6 +21,14 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 500
+      properties:
+        fetch.min.bytes: 1024
+        fetch.max.wait.ms: 100
+    listener:
+      type: batch
+      concurrency: 3
+      ack-mode: batch
 
   jpa:
     hibernate:
@@ -35,9 +43,23 @@ spring:
 server:
   port: 8080
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
 logging:
   level:
     root: INFO
     org.hibernate.SQL: ERROR
     com.example.couponsystem.facade.CouponFacade: INFO
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
